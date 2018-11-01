@@ -21,7 +21,8 @@ def worker(conn, env_name):
     config={
       'fps': str(60),
       'width': str(84),
-      'height': str(84)
+      'height': str(84),
+      'levelDirectory':'contributed/psychlab'
     })
   conn.send(0)
   
@@ -55,14 +56,14 @@ def _action(*entries):
 
 class LabEnvironment(environment.Environment):
   ACTION_LIST = [
-    _action(-20,   0,  0,  0, 0, 0, 0), # look_left
-    _action( 20,   0,  0,  0, 0, 0, 0), # look_right
-    #_action(  0,  10,  0,  0, 0, 0, 0), # look_up
-    #_action(  0, -10,  0,  0, 0, 0, 0), # look_down
-    _action(  0,   0, -1,  0, 0, 0, 0), # strafe_left
-    _action(  0,   0,  1,  0, 0, 0, 0), # strafe_right
-    _action(  0,   0,  0,  1, 0, 0, 0), # forward
-    _action(  0,   0,  0, -1, 0, 0, 0), # backward
+    _action(-10,   0,  0,  0, 0, 0, 0), # look_left
+    _action( 10,   0,  0,  0, 0, 0, 0), # look_right
+    _action(  0,  10,  0,  0, 0, 0, 0), # look_up
+    _action(  0, -10,  0,  0, 0, 0, 0), # look_down
+    #_action(  0,   0, -1,  0, 0, 0, 0), # strafe_left
+    #_action(  0,   0,  1,  0, 0, 0, 0), # strafe_right
+    #_action(  0,   0,  0,  1, 0, 0, 0), # forward
+    #_action(  0,   0,  0, -1, 0, 0, 0), # backward
     #_action(  0,   0,  0,  0, 1, 0, 0), # fire
     #_action(  0,   0,  0,  0, 0, 1, 0), # jump
     #_action(  0,   0,  0,  0, 0, 0, 1)  # crouch
@@ -103,10 +104,10 @@ class LabEnvironment(environment.Environment):
 
   def process(self, action):
     real_action = LabEnvironment.ACTION_LIST[action]
-
+    print ("Sending action")
     self.conn.send([COMMAND_ACTION, real_action])
     obs, reward, terminal = self.conn.recv()
-
+    print("Signal Received")
     if not terminal:
       state = self._preprocess_frame(obs)
     else:

@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 env_args = [
   "--env_type lab",
-  "--env_name nav_maze_static_01",
+  "--env_name glass_pattern_detection",
   "--use_pixel_change True",
   "--use_value_replay True",
   "--use_reward_prediction True"

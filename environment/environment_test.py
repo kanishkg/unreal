@@ -20,7 +20,7 @@ class TestEnvironment(unittest.TestCase):
 
     if has_lab:
       env_type = "lab"
-      env_name = "nav_maze_static_01"
+      env_name = "glass_pattern_detection"
       self.check_environment(env_type, env_name)
 
   def test_gym(self):
