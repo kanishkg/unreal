@@ -3,6 +3,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
+import pprint
 from multiprocessing import Process, Pipe
 import numpy as np
 import deepmind_lab
@@ -24,6 +26,8 @@ def worker(conn, env_name):
       'height': str(84),
       'levelDirectory':'contributed/psychlab'
     })
+  action_spec = env.action_spec()
+  pprint.pprint(action_spec)
   conn.send(0)
   
   while True:
@@ -60,13 +64,13 @@ class LabEnvironment(environment.Environment):
     _action( 10,   0,  0,  0, 0, 0, 0), # look_right
     _action(  0,  10,  0,  0, 0, 0, 0), # look_up
     _action(  0, -10,  0,  0, 0, 0, 0), # look_down
-    #_action(  0,   0, -1,  0, 0, 0, 0), # strafe_left
-    #_action(  0,   0,  1,  0, 0, 0, 0), # strafe_right
-    #_action(  0,   0,  0,  1, 0, 0, 0), # forward
-    #_action(  0,   0,  0, -1, 0, 0, 0), # backward
-    #_action(  0,   0,  0,  0, 1, 0, 0), # fire
-    #_action(  0,   0,  0,  0, 0, 1, 0), # jump
-    #_action(  0,   0,  0,  0, 0, 0, 1)  # crouch
+    _action(  0,   0, -1,  0, 0, 0, 0), # strafe_left
+    _action(  0,   0,  1,  0, 0, 0, 0), # strafe_right
+    _action(  0,   0,  0,  1, 0, 0, 0), # forward
+    _action(  0,   0,  0, -1, 0, 0, 0), # backward
+    _action(  0,   0,  0,  0, 1, 0, 0), # fire
+    _action(  0,   0,  0,  0, 0, 1, 0), # jump
+    _action(  0,   0,  0,  0, 0, 0, 1)  # crouch
   ]
 
   @staticmethod
@@ -104,10 +108,8 @@ class LabEnvironment(environment.Environment):
 
   def process(self, action):
     real_action = LabEnvironment.ACTION_LIST[action]
-    print ("Sending action")
     self.conn.send([COMMAND_ACTION, real_action])
     obs, reward, terminal = self.conn.recv()
-    print("Signal Received")
     if not terminal:
       state = self._preprocess_frame(obs)
     else:
