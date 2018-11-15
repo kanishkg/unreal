@@ -17,27 +17,26 @@ END_STUDY_BUTTON_SIZE = .09375
 ALLOW_TRANSLATION = True
 
 # These are RGB values, they have a fixed luminance in HSL space.
-COLORS = {
-    {255, 0, 0},
-    {255, 191, 0},
-    {127, 255, 0},
-    {0, 255, 255},
-    {0, 63, 255},
-    {127, 0, 255},
-    {255, 0, 191}
-}
+COLORS = [
+    [255, 0, 0],
+    [255, 191, 0],
+    [127, 255, 0],
+    [0, 255, 255],
+    [0, 63, 255],
+    [127, 0, 255],
+    [255, 0, 191]
+]
 
 ALL_OPTO_TYPES = ['E', 'Square']
 ORIENTATIONS = ['left', 'right', 'up', 'down']
 DOMAINS = [
       'E_ALL',
-      'E_COLOR',
-      'E_ORIENTATION',
-      'SQUARE_COLOR',
-      'ALL',
+#       'E_COLOR',
+#       'E_ORIENTATION',
+#       'SQUARE_COLOR',
+      'ALL'
   ]
 
-images = {}
 
 
 def get_array_median(array):
@@ -65,6 +64,8 @@ class data_generator(object):
   def ___init__():
     self.setup_images()
     self.setup_grid()
+    self.setSize = 2
+    self.allowTranslation = True
 
   def setup_images():
 
@@ -100,7 +101,7 @@ class data_generator(object):
   def setup_grid():
     self.grid_limit = GRID.size-GRID.step
     self.grid_step = GRID.step
-    target_pixels_size = {
+    self.target_pixels_size = {
         'width' : TARGET_SIZE * SCREEN_SIZE.width,
         'height' : TARGET_SIZE * SCREEN_SIZE.height
       }
@@ -158,7 +159,7 @@ class data_generator(object):
       self._drawE(opt.location, opt.color, opt.orientation)
 
 
-  def getStudyArrayData()
+  def getStudyArrayData():
     self.domainType = random.choice(self.domains)
     domain = self.getDomain(self.domainType)
 
@@ -184,7 +185,7 @@ class data_generator(object):
       # -- make sure the random location was not already used
       while location in self._currentStudyLocationsSet:
         location = getRandomCoordinates(self._gridLimit, self._gridStep)
-      self._currentStudyLocationsSet[helpers.tostring(location)] = true
+      self._currentStudyLocationsSet.append(location)
 
       studyArray = {
         'location' : location,
@@ -196,3 +197,147 @@ class data_generator(object):
       studyArrayData.append(studyArray)
 
     return studyArrayData
+
+  def getDomain(domainType):
+    if domainType == 'E_ALL':
+      return {
+          'optotypes' : ['E'],
+          'colors' : COLORS,
+          'colorIds' : list(range(1, len(COLORS))),
+          'orientations' : ORIENTATIONS
+      }
+    elif domainType == 'ALL':
+       return {
+          'optotypes' : ALL_OPTO_TYPES,
+          'colors' : COLORS,
+          'colorIds' : list(range(1, len(COLORS))),
+          'orientations' : ORIENTATIONS
+      }
+    # elseif domainType == 'E_COLOR' then
+    #   local fixedOrientation, _ = psychlab_helpers.randomFrom(ORIENTATIONS)
+    #   return {
+    #       optotypes = {'E'},
+    #       colors = kwargs.colors,
+    #       colorIds = psychlab_helpers.range(1, #kwargs.colors),
+    #       orientations = {fixedOrientation}
+    #   }
+    # elseif domainType == 'E_ORIENTATION' then
+    #   local fixedColor, fixedColorId = psychlab_helpers.randomFrom(kwargs.colors)
+    #   return {
+    #       optotypes = {'E'},
+    #       colors = {fixedColor},
+    #       colorIds = {fixedColorId},
+    #       orientations = ORIENTATIONS
+    #   }
+    # elseif domainType == 'SQUARE_COLOR' then
+    #   return {
+    #       optotypes = {'Square'},
+    #       colors = kwargs.colors,
+    #       colorIds = psychlab_helpers.range(1, #kwargs.colors),
+    #       orientations = ORIENTATIONS, -- orientation does nothing for a square
+    #   }
+    # elseif domainType == 'ALL' then
+    #   return {
+    #       optotypes = ALL_OPTO_TYPES,
+    #       colors = kwargs.colors,
+    #       colorIds = psychlab_helpers.range(1, #kwargs.colors),
+    #       orientations = ORIENTATIONS
+    #   }
+
+  def getLegalTransforms(domainType, optotype):
+    legalTransforms = []
+    if domainType == 'E_ALL':
+      legalTransforms = ['COLOR', 'ORIENTATION']
+    # elseif domainType == 'E_COLOR' then
+    #   legalTransforms = {'COLOR'}
+    # elseif domainType == 'E_ORIENTATION' then
+    #   legalTransforms = {'ORIENTATION'}
+    # elseif domainType == 'SQUARE_COLOR' then
+    #   legalTransforms = {'COLOR'}
+    elif domainType == 'ALL':
+      if optotype == 'E':
+        legalTransforms = ['OPTOTYPE', 'COLOR', 'ORIENTATION']
+      elif optotype == 'Square':
+        legalTransforms = ['OPTOTYPE', 'COLOR']
+
+    if self.allowTranslation:
+      legalTransforms.append('TRANSLATION')
+
+    return legalTransforms
+
+  def getTestArray(studyArrayData):
+    testArrayData = studyArrayData.copy()
+    isNew = np.random.uniform(0, 1) > 0
+
+    if not isNew:
+      self.transform = 'NONE'
+    else:
+      # -- select an object to change
+      changedObjectIndex = np.random.randint(1, len(testArrayData.location))
+
+      # -- select a transformation to apply
+      legalTransforms = self.getLegalTransforms(
+          self.domainType,
+          testArrayData.optotype[changedObjectIndex]
+      )
+      self.transform = random.choose(
+        legalTransforms)
+
+      # -- apply the transformation
+      if self.transform == 'COLOR':
+        # -- make sure the random color is not the one that was already used
+        newColor  = random.choose(COLORS)
+        newColorId = COLORS.index(newColor)
+        while newColor == studyArrayData.color[changedObjectIndex]:
+          newColor  = random.choose(COLORS)
+          newColorId = COLORS.index(newColor) 
+        testArrayData.color[changedObjectIndex] = newColor
+        testArrayData.colorId[changedObjectIndex] = newColorId
+      elif self.transform == 'ORIENTATION':
+        # -- make sure the random orientation is not the one that was already used
+        newOrientation = random.choose(ORIENTATIONS)
+        while newOrientation == studyArrayData.orientation[changedObjectIndex]:
+          newOrientation = random.choose(ORIENTATIONS) 
+
+        testArrayData.orientation[changedObjectIndex] = newOrientation
+
+      elif self.transform == 'OPTOTYPE':
+        if testArrayData.optotype[changedObjectIndex] == 'E':
+          testArrayData.optotype[changedObjectIndex] = 'Square'
+        elif testArrayData.optotype[changedObjectIndex] == 'Square':
+          testArrayData.optotype[changedObjectIndex] = 'E'
+
+      elif self.transform == 'TRANSLATION':
+        # -- make sure the random location is not on top of another object
+        newLocation = getRandomCoordinates(self._gridLimit,
+          self._gridStep)
+        while newLocation in self._currentStudyLocationsSet:
+          newLocation = getRandomCoordinates(self._gridLimit, self._gridStep)
+
+        testArrayData.location[changedObjectIndex] = newLocation
+    return testArrayData, isNew
+
+  def renderArray(arrayData):
+    if not self._array:
+      self._array = np.zeros(self.target_pixels_size.height,
+                             self.target_pixels_size.width,
+                                      3)
+    self._array = BG_COLOR[0]
+
+    # -- draw objects
+    for i in range(len(arrayData.location)):
+      location = {
+          'left' : arrayData.location[i][1] * self._hFactor,
+          'right' : (arrayData.location[i][1] + GRID.step) * self._hFactor,
+          'bottom' : arrayData.location[i][2] * self._vFactor,
+          'top' : (arrayData.location[i][2] + GRID.step) *
+            self._vFactor,
+      }
+
+      self.drawObject(location = location,
+                      color = arrayData.color[i],
+                      optotype = arrayData.optotype[i],
+                      orientation = arrayData.orientation[i])
+
+    return self._array
+
