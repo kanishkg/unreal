@@ -1,6 +1,12 @@
 import random
 import numpy as np
+import copy
+from skimage.io import imsave
 
+
+seed = 7
+np.random.seed(4)
+random.seed(4)
 SCREEN_SIZE = {'width' : 80, 'height' : 80}
 BG_COLOR = [255, 255, 255]
 
@@ -40,92 +46,100 @@ DOMAINS = [
 
 
 def get_array_median(array):
-  if array.shape % 2 == 0:
-    return array[np.ceil(array.shape/2)]
+  if len(array) % 2 == 0:
+    return array[np.ceil(len(array)/2).astype(np.int64)]
   else:
-    return (array[np.floor(array.shape/2)]+array[np.ceil(array.shape/2)])/2
+    return (array[np.floor(len(array)/2).astype(np.int64)]+array[np.ceil(len(array)/2).astype(np.int64)])/2
 
 def get_size_in_pixels(screen_size, size):
-  return {'width': np.floor(size*screen_size.width),
-      'height': np.floor(size*screen_size.height)}
+  return {'width': np.floor(size*screen_size['width']),
+      'height': np.floor(size*screen_size['height'])}
 
-def get_random_coords(limit, step):
-  full_domain = np.range(np.floor(step/2), limit, step)
+def getRandomCoordinates(limit, step):
+  full_domain = np.arange(np.floor(step/2), limit, step).tolist()
   grid_center = get_array_median(full_domain)
   invalid_domain = [-2,-1,1,2]
-  x = np.random.choice(full_domain)[0]
-  y = np.random.choice(full_domain)[0]
+  x = random.choice(full_domain)
+  y = random.choice(full_domain)
   while (x in invalid_domain) and (y in invalid_domain):
-    x = np.random.choice(full_domain)[0]
-    y = np.random.choice(full_domain)[0]
+    x = random.choice(full_domain)
+    y = random.choice(full_domain)
   return x, y
 
-class data_generator(object):
-  def ___init__():
-    self.setup_images()
+class DataGenerator:
+
+  def __init__(self, set_size):
+    print "init"
+    # self.setup_images()
     self.setup_grid()
-    self.setSize = 2
-    self.allowTranslation = True
+    self.setSize = set_size
+    self.allowTranslation = False
+    self.domains = DOMAINS
+    self._gridStep = GRID['step']
+    self._gridSize = GRID['size']
 
-  def setup_images():
+  def setup_images(self):
+    self.images = {}
+    h = BUTTON_SIZE * SCREEN_SIZE['height']
+    w = BUTTON_SIZE * SCREEN_SIZE['width']
 
-      h = BUTTON_SIZE * SCREEN_SIZE.height
-      w = BUTTON_SIZE * SCREEN_SIZE.width
+    self.images['greenImage'] = np.ones((h, w, 3))
+    self.images['greenImage'][:, :, 0] = np.ones((h, w)) * 100
+    self.images['greenImage'][:, :, 1] = np.ones((h, w)) *255
+    self.images['greenImage'][:, :, 2] = np.ones((h, w)) *100
 
-      self.images['greenImage'] = np.ones((h, w, 3))
-      self.images['greenImage'][:, :, 0] = np.ones((h, w)) * 100
-      self.images['greenImage'][:, :, 1] = np.ones((h, w)) *255
-      self.images['greenImage'][:, :, 2] = np.ones((h, w)) *100
+    self.images['redImage'] = np.zeros((h, w, 3))
+    self.images['redImage'][:,:,0] = np.ones((h,w)) *255
+    self.images['redImage'][:,:,1] = np.ones((h,w)) *100
+    self.images['redImage'][:,:,2] = np.ones((h,w)) *100
 
-      self.images['redImage'] = np.zeros((h, w, 3))
-      self.images['redImage'][:,:,0] = np.ones((h,w)) *255
-      self.images['redImage'][:,:,1] = np.ones((h,w)) *100
-      self.images['redImage'][:,:,2] = np.ones((h,w)) *100
+    self.images['blackImage'] = np.zeros((h, w, 3))
+    self.images['whiteImage'] = np.ones((h, w, 3)) * 255
 
-      self.images['blackImage'] = np.zeros((h, w, 3))
-      self.images['whiteImage'] = np.ones((h, w, 3)) * 255
+    self.target_pixels = get_size_in_pixels(SCREEN_SIZE, TARGET_SIZE)
+    self.target = np.ones((self.target_pixels['height'], self.target_pixels['width'], 3))
 
-      self.target_pixels = get_size_in_pixels(SCREEN_SIZE, TARGET_SIZE)
-      self.target = np.ones((target_pixels.height, target_pixels.width, 3))
+    # create self-paced endStudyPhase button image
+    # borderSize = (h + w) / 8
+    # TURQUOISE = [59, 165, 170]
+    # images['turquoiseBox'] = np.zeros((h, w, 3))
+    # borderFill(self.images.turquoiseBox, h, w, borderSize, TURQUOISE)
 
-      # create self-paced endStudyPhase button image
-      # borderSize = (h + w) / 8
-      # TURQUOISE = [59, 165, 170]
-      # images['turquoiseBox'] = np.zeros((h, w, 3))
-      # borderFill(self.images.turquoiseBox, h, w, borderSize, TURQUOISE)
+    # self.images.turquoiseImage = tensor.ByteTensor(h, w, 3)
+    # for i in range(3):
+    #   images.turquoiseImage:select(3, i):fill(TURQUOISE[i])
 
-      # self.images.turquoiseImage = tensor.ByteTensor(h, w, 3)
-      # for i in range(3):
-      #   images.turquoiseImage:select(3, i):fill(TURQUOISE[i])
-
-  def setup_grid():
-    self.grid_limit = GRID.size-GRID.step
-    self.grid_step = GRID.step
+  def setup_grid(self):
+    self._gridLimit = GRID['size']-GRID['step']
+    self._gridStep = GRID['step']
     self.target_pixels_size = {
-        'width' : TARGET_SIZE * SCREEN_SIZE.width,
-        'height' : TARGET_SIZE * SCREEN_SIZE.height
+        'width' : TARGET_SIZE * SCREEN_SIZE['width'],
+        'height' : TARGET_SIZE * SCREEN_SIZE['height']
       }
-    self._hFactor = target_pixels_size.width / GRID.size
-    self._vFactor = target_pixels_sixe.height / GRID.size
+    self._hFactor = self.target_pixels_size['width'] / GRID['size']
+    self._vFactor = self.target_pixels_size['height'] / GRID['size']
 
-  def _drawSquare(location, color):
+  def _drawSquare(self, location, color):
+    print location
+    print color
+    print self._array.shape
     for i in range(len(color)):
-      self._array[location.bottom:location.top,
-          location.left:location.right,i] = color[i]
+      self._array[int(location['bottom']):int(location['top']),
+          int(location['left']):int(location['right']),i] = color[i]
 
-  def _drawE(location, color, orientation):
-    height = location.top - location.bottom
-    width = location.right - location.left
+  def _drawE(self, location, color, orientation):
+    height = location['top'] - location['bottom']
+    width = location['right'] - location['left']
 
-    twentyPercentY = np.floor(.5 + 0.2 * height) + location.bottom
-    fortyPercentY = np.floor(.5 + 0.4 * height) + location.bottom
-    sixtyPercentY = np.floor(.5 + 0.6 * height) + location.bottom
-    eightyPercentY = np.floor(.5 + 0.8 * height) + location.bottom
+    twentyPercentY = int(np.floor(.5 + 0.2 * height) + location['bottom'])
+    fortyPercentY = int(np.floor(.5 + 0.4 * height) + location['bottom'])
+    sixtyPercentY = int(np.floor(.5 + 0.6 * height) + location['bottom'])
+    eightyPercentY = int(np.floor(.5 + 0.8 * height) + location['bottom'])
 
-    twentyPercentX = np.floor(.5 + 0.2 * width) + location.left
-    fortyPercentX = np.floor(.5 + 0.4 * width) + location.left
-    sixtyPercentX = np.floor(.5 + 0.6 * width) + location.left
-    eightyPercentX = np.floor(.5 + 0.8 * width) + location.left
+    twentyPercentX = int(np.floor(.5 + 0.2 * width) + location['left'])
+    fortyPercentX = int(np.floor(.5 + 0.4 * width) + location['left'])
+    sixtyPercentX = int(np.floor(.5 + 0.6 * width) + location['left'])
+    eightyPercentX = int(np.floor(.5 + 0.8 * width) + location['left'])
 
     # fill with solid color
     self._drawSquare(location, color)
@@ -133,54 +147,48 @@ class data_generator(object):
     # block out notches in the E by filling with background color
     if orientation == 'right':
       self._array[twentyPercentY: fortyPercentY,
-          fortyPercentX: location.right,: ] = BG_COLOR
+          fortyPercentX: int(location['right']),: ] = BG_COLOR
       self._array[sixtyPercentY: eightyPercentY,
-          fortyPercentX: location.right,: ] = BG_COLOR
+          fortyPercentX: int(location['right']),: ] = BG_COLOR
     elif orientation == 'left':
       self._array[twentyPercentY: fortyPercentY,
-          location.left:sixtyPercentX, : ] = BG_COLOR
+          int(location['left']):sixtyPercentX, : ] = BG_COLOR
       self._array[sixtyPercentY: eightyPercentY,
-          location.left:sixtyPercentX, : ] = BG_COLOR
+          int(location['left']):sixtyPercentX, : ] = BG_COLOR
     elif orientation == 'up':
-      self._array[sixtyPercentY: location.top,
+      self._array[sixtyPercentY: int(location['top']),
           twentyPercentX:fortyPercentX,: ] = BG_COLOR
-      self._array[sixtyPercentY: location.top,
+      self._array[sixtyPercentY: int(location['top']),
           sixtyPercentX: eightyPercentX,: ] = BG_COLOR
     elif orientation == 'down':
-      self._array[location.bottom:fortyPercentY,
+      self._array[int(location['bottom']):fortyPercentY,
           twentyPercentX:fortyPercentX,: ] = BG_COLOR
-      self._array[location.bottom:fortyPercentY,
-          sixtyPercentX: eightyPercentX,: ] = BG_COLOR 
+      self._array[int(location['bottom']):fortyPercentY,
+          sixtyPercentX: eightyPercentX,: ] = BG_COLOR
 
-  def drawObject(opt):
-    if opt.optotype == 'Square':
-      self._drawSquare(opt.location, opt.color)
-    elif opt.optotype == 'E':
-      self._drawE(opt.location, opt.color, opt.orientation)
+  def drawObject(self, opt):
+    if opt['optotype'] == 'Square':
+      self._drawSquare(opt['location'], opt['color'])
+    elif opt['optotype'] == 'E':
+      self._drawE(opt['location'], opt['color'], opt['orientation'])
 
 
-  def getStudyArrayData():
-    self.domainType = random.choice(self.domains)
+  def getStudyArrayData(self):
+    self.domainType = random.choice(DOMAINS)
     domain = self.getDomain(self.domainType)
 
-    studyArrayData = {
-        'location' : {},
-        'color' : {},
-        'colorId' : {},
-        'optotype' : {},
-        'orientation' : {}
-    }
+    studyArrayData = []
 
     # -- iterate over objects in the study array
-    self._currentStudyLocationsSet = {}
+    self._currentStudyLocationsSet = []
     for i in range(self.setSize):
       # -- generate random location, color, optotype, and orientation
       location = getRandomCoordinates(self._gridLimit, self._gridStep)
-      color = random.choose(domain.colors)
-      index = domain.colors.index(color)
-      colorId = domain.colorIds[index]
-      optotype = random.choose(domain.optotypes)
-      orientation = random.choose(domain.orientations)
+      color = random.choice(domain['colors'])
+      index = domain['colors'].index(color)
+      colorId = domain['colorIds'][index]
+      optotype = random.choice(domain['optotypes'])
+      orientation = random.choice(domain['orientations'])
 
       # -- make sure the random location was not already used
       while location in self._currentStudyLocationsSet:
@@ -198,19 +206,19 @@ class data_generator(object):
 
     return studyArrayData
 
-  def getDomain(domainType):
+  def getDomain(self, domainType):
     if domainType == 'E_ALL':
       return {
           'optotypes' : ['E'],
           'colors' : COLORS,
-          'colorIds' : list(range(1, len(COLORS))),
+          'colorIds' : list(range(len(COLORS))),
           'orientations' : ORIENTATIONS
       }
     elif domainType == 'ALL':
        return {
           'optotypes' : ALL_OPTO_TYPES,
           'colors' : COLORS,
-          'colorIds' : list(range(1, len(COLORS))),
+          'colorIds' : list(range(len(COLORS))),
           'orientations' : ORIENTATIONS
       }
     # elseif domainType == 'E_COLOR' then
@@ -244,7 +252,7 @@ class data_generator(object):
     #       orientations = ORIENTATIONS
     #   }
 
-  def getLegalTransforms(domainType, optotype):
+  def getLegalTransforms(self, domainType, optotype):
     legalTransforms = []
     if domainType == 'E_ALL':
       legalTransforms = ['COLOR', 'ORIENTATION']
@@ -265,47 +273,49 @@ class data_generator(object):
 
     return legalTransforms
 
-  def getTestArray(studyArrayData):
-    testArrayData = studyArrayData.copy()
+  def getTestArray(self, studyArrayData):
+    testArrayData = copy.deepcopy(studyArrayData)
     isNew = np.random.uniform(0, 1) > 0
 
     if not isNew:
       self.transform = 'NONE'
     else:
       # -- select an object to change
-      changedObjectIndex = np.random.randint(1, len(testArrayData.location))
-
+      changedObjectIndex = np.random.randint(1, len(testArrayData))
+      print changedObjectIndex
       # -- select a transformation to apply
       legalTransforms = self.getLegalTransforms(
           self.domainType,
-          testArrayData.optotype[changedObjectIndex]
+          testArrayData[changedObjectIndex]['optotype']
       )
-      self.transform = random.choose(
+      self.transform = random.choice(
         legalTransforms)
-
+      print self.transform
       # -- apply the transformation
       if self.transform == 'COLOR':
         # -- make sure the random color is not the one that was already used
-        newColor  = random.choose(COLORS)
+        newColor  = random.choice(COLORS)
         newColorId = COLORS.index(newColor)
-        while newColor == studyArrayData.color[changedObjectIndex]:
-          newColor  = random.choose(COLORS)
-          newColorId = COLORS.index(newColor) 
-        testArrayData.color[changedObjectIndex] = newColor
-        testArrayData.colorId[changedObjectIndex] = newColorId
+        while newColor == studyArrayData[changedObjectIndex]['color']:
+          newColor  = random.choice(COLORS)
+          newColorId = COLORS.index(newColor)
+        testArrayData[changedObjectIndex]['color'] = newColor
+        testArrayData[changedObjectIndex]['colorId'] = newColorId
       elif self.transform == 'ORIENTATION':
         # -- make sure the random orientation is not the one that was already used
-        newOrientation = random.choose(ORIENTATIONS)
-        while newOrientation == studyArrayData.orientation[changedObjectIndex]:
-          newOrientation = random.choose(ORIENTATIONS) 
-
-        testArrayData.orientation[changedObjectIndex] = newOrientation
+        newOrientation = random.choice(ORIENTATIONS)
+        print newOrientation
+        print "old "+studyArrayData[changedObjectIndex]['orientation']
+        while newOrientation == studyArrayData[changedObjectIndex]['orientation']:
+          newOrientation = random.choice(ORIENTATIONS) 
+        print newOrientation
+        testArrayData[changedObjectIndex]['orientation'] = newOrientation
 
       elif self.transform == 'OPTOTYPE':
-        if testArrayData.optotype[changedObjectIndex] == 'E':
-          testArrayData.optotype[changedObjectIndex] = 'Square'
-        elif testArrayData.optotype[changedObjectIndex] == 'Square':
-          testArrayData.optotype[changedObjectIndex] = 'E'
+        if testArrayData[changedObjectIndex]['optotype'] == 'E':
+          testArrayData[changedObjectIndex]['optotype'] = 'Square'
+        elif testArrayData[changedObjectIndex]['optotype'] == 'Square':
+          testArrayData[changedObjectIndex]['optotype'] = 'E'
 
       elif self.transform == 'TRANSLATION':
         # -- make sure the random location is not on top of another object
@@ -314,30 +324,38 @@ class data_generator(object):
         while newLocation in self._currentStudyLocationsSet:
           newLocation = getRandomCoordinates(self._gridLimit, self._gridStep)
 
-        testArrayData.location[changedObjectIndex] = newLocation
+        testArrayData[changedObjectIndex]['location'] = newLocation
     return testArrayData, isNew
 
-  def renderArray(arrayData):
-    if not self._array:
-      self._array = np.zeros(self.target_pixels_size.height,
-                             self.target_pixels_size.width,
-                                      3)
-    self._array = BG_COLOR[0]
+  def renderArray(self, arrayData):
+    self._array = np.zeros((int(self.target_pixels_size['height']),
+                             int(self.target_pixels_size['width']),
+                                      3), dtype=np.int64)
+    self._array[:,:,:] = BG_COLOR[0]
 
     # -- draw objects
-    for i in range(len(arrayData.location)):
+    for i in range(len(arrayData)):
       location = {
-          'left' : arrayData.location[i][1] * self._hFactor,
-          'right' : (arrayData.location[i][1] + GRID.step) * self._hFactor,
-          'bottom' : arrayData.location[i][2] * self._vFactor,
-          'top' : (arrayData.location[i][2] + GRID.step) *
+          'left' : arrayData[i]['location'][0] * self._hFactor,
+          'right' : (arrayData[i]['location'][0] + GRID['step']) * self._hFactor,
+          'bottom' : arrayData[i]['location'][1] * self._vFactor,
+          'top' : (arrayData[i]['location'][1] + GRID['step']) *
             self._vFactor,
       }
 
-      self.drawObject(location = location,
-                      color = arrayData.color[i],
-                      optotype = arrayData.optotype[i],
-                      orientation = arrayData.orientation[i])
+      self.drawObject({'location' : location,
+                      'color' : arrayData[i]['color'],
+                      'optotype' : arrayData[i]['optotype'],
+                      'orientation' : arrayData[i]['orientation']})
 
     return self._array
+
+if __name__=='__main__':
+  data_generator = DataGenerator(3)
+  study_array = data_generator.getStudyArrayData()
+  test_array, n = data_generator.getTestArray(study_array)
+  a = data_generator.renderArray(study_array)
+  print a.shape
+  imsave('/home/kvg245/g1.jpg',data_generator.renderArray(study_array))
+  imsave('/home/kvg245/g2.jpg',data_generator.renderArray(test_array))
 
